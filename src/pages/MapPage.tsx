@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Map, MapMarker, CustomOverlayMap } from "react-kakao-maps-sdk";
-import { db, storage } from "../firebase";
+import { db } from "../firebase";
 import {
   collection,
   addDoc,
@@ -19,12 +19,15 @@ interface House {
   detailAddress?: string;
   content?: string;
   images?: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   createdAt?: any;
 }
 
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     kakao: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     daum: any;
   }
 }
@@ -61,11 +64,23 @@ const MapPage = () => {
 
   const handleAddressSearch = () => {
     new window.daum.Postcode({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       oncomplete: function (data: any) {
         const { address } = data;
         setFormData((prev) => ({ ...prev, address }));
 
+        console.log(data);
+
+        // Geocoder 서비스 초기화 확인
+        if (!window.kakao?.maps?.services) {
+          console.error("Kakao maps services not loaded");
+          return;
+        }
+
+        // 주소로 좌표 검색
         const geocoder = new window.kakao.maps.services.Geocoder();
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         geocoder.addressSearch(address, function (result: any, status: any) {
           if (status === window.kakao.maps.services.Status.OK) {
             const coords = new window.kakao.maps.LatLng(
@@ -76,31 +91,13 @@ const MapPage = () => {
               lat: coords.getLat(),
               lng: coords.getLng(),
             });
+            setIsWriting(true); // 주소 선택 후 모달 유지
+          } else {
+            alert("주소를 찾을 수 없습니다.");
           }
         });
       },
     }).open();
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      setFormData((prev) => ({
-        ...prev,
-        images: [...prev.images, ...Array.from(files)],
-      }));
-    }
-  };
-
-  const uploadImages = async (images: File[]) => {
-    const urls = [];
-    for (const image of images) {
-      const storageRef = ref(storage, `houses/${Date.now()}_${image.name}`);
-      await uploadBytes(storageRef, image);
-      const url = await getDownloadURL(storageRef);
-      urls.push(url);
-    }
-    return urls;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,29 +109,28 @@ const MapPage = () => {
 
     try {
       setIsLoading(true);
-      const imageUrls = await uploadImages(formData.images);
 
-      await addDoc(collection(db, "houses"), {
+      // Firestore에 데이터 저장
+      const houseData = {
         lat: selectedPosition.lat,
         lng: selectedPosition.lng,
         issueType: formData.issueType,
         address: formData.address,
         detailAddress: formData.detailAddress,
         content: formData.content,
-        images: imageUrls,
         createdAt: serverTimestamp(),
-      });
+      };
 
-      resetForm();
+      await addDoc(collection(db, "houses"), houseData);
       alert("성공적으로 등록되었습니다!");
+      resetForm();
     } catch (error) {
       console.error("Error adding house:", error);
-      alert("등록 중 오류가 발생했습니다.");
+      alert("등록 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setIsLoading(false);
     }
   };
-
   const resetForm = () => {
     setIsWriting(false);
     setSelectedPosition(null);
@@ -145,12 +141,6 @@ const MapPage = () => {
       content: "",
       images: [],
     });
-  };
-
-  const markerColors = {
-    noise: "#FF0000",
-    bug: "#4B0082",
-    water: "#0000FF",
   };
 
   return (
@@ -312,53 +302,6 @@ const MapPage = () => {
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
                     placeholder="자세한 내용을 입력해주세요"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    이미지
-                  </label>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="mt-1 block w-full text-sm text-gray-500
-                             file:mr-4 file:py-2 file:px-4
-                             file:rounded-full file:border-0
-                             file:text-sm file:font-semibold
-                             file:bg-blue-50 file:text-blue-700
-                             hover:file:bg-blue-100"
-                  />
-                  {formData.images.length > 0 && (
-                    <div className="mt-2 flex gap-2 overflow-x-auto">
-                      {formData.images.map((file, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt={`미리보기 ${index + 1}`}
-                            className="w-20 h-20 object-cover rounded"
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                images: prev.images.filter(
-                                  (_, i) => i !== index
-                                ),
-                              }))
-                            }
-                            className="absolute -top-2 -right-2 bg-red-500 text-white 
-                                     rounded-full w-5 h-5 flex items-center justify-center 
-                                     text-xs hover:bg-red-600"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
