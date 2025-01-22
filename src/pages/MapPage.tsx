@@ -154,7 +154,7 @@ const MapPage = () => {
   };
 
   return (
-    <div className="p-4 mt-16">
+    <div className="p-4 ">
       <div className="w-full h-[calc(100vh-8rem)] rounded-lg overflow-hidden shadow-lg relative">
         <Map
           center={{ lat: 37.5665, lng: 126.978 }}
@@ -215,9 +215,9 @@ const MapPage = () => {
 
         <button
           onClick={() => setIsWriting(!isWriting)}
-          className="fixed right-6 bottom-6 px-4 py-2 bg-blue-600 text-white 
-                    rounded-full shadow-lg hover:bg-blue-700 transition-all 
-                    transform hover:scale-105 z-50 flex items-center gap-2"
+          className="fixed right-6 bottom-24 px-4 py-2 bg-blue-600 text-white 
+           rounded-full shadow-lg hover:bg-blue-700 transition-all 
+           transform hover:scale-105 z-50 flex items-center gap-2"
         >
           {isWriting ? (
             <>
